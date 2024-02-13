@@ -91,10 +91,10 @@ void KMeans::updateCentroids( )
 
 void KMeans::kMeansAlgo()
 {
-    mAssignments.resize(M, -1);
     bool converged = false;
 
     mCentroids.resize(K);
+    mAssignments.resize(M, -1);
 
     for (int i = 0; i < K; ++i)
     {
