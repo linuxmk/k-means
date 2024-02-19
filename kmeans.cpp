@@ -182,7 +182,7 @@ void KMeans::printClusterCentroids( std::ostream& out )
         out << (i + 1) << " ";
         for (size_t j = 0; j < mCentroids[i].size(); ++j)
         {
-            out << std::fixed << std::setprecision(6) << mCentroids[i][j] << " ";
+            out << std::fixed << std::setprecision(2) << mCentroids[i][j] << " ";
         }
         out << "\n";
     }
@@ -196,7 +196,7 @@ void KMeans::printDataset(std::ostream &out)
         out << (mAssignments[i] + 1) << " ";
         for (int j = 0; j < N; ++j)
         {
-            out << std::fixed << std::setprecision(6) << mDataset[i][j] << " ";
+            out << std::fixed << std::setprecision(2) << mDataset[i][j] << " ";
         }
         out << "\n";
     }
