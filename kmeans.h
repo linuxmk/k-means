@@ -6,6 +6,8 @@
 #include <fstream>
 #include <cmath>
 #include <iomanip>
+#include <random>
+#include <limits>
 
 class KMeans
 {
@@ -22,13 +24,14 @@ private:
     int K;
     float d;
 
-    std::vector<std::vector<float>>         mDataset;
-    std::vector<std::vector<float>>         mCentroids;
-    std::vector<int>                        mAssignments;
+    std::vector<std::vector<double>>         mDataset;
+    std::vector<std::vector<double>>         mCentroids;
+    std::vector<int>                         mAssignments;
 
-    float euclideanDistance(const std::vector<float>& v1, const std::vector<float>& v2);
-    int findClosestCentroid(const std::vector<float>& v );
-    void updateCentroids();
+    double euclideanDistance(const std::vector<double>& v1, const std::vector<double>& v2);
+    void kMeansPlusPlusInitCentroids();
+    void assignPointsToCentroids();
+    std::vector<std::vector<double>> updateCentroids();
 };
 
 #endif // KMEANS_H

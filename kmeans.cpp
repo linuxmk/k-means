@@ -16,7 +16,7 @@ int KMeans::readFromFile( const std::string& filename)
 
 //    std::cerr << "M = " << M << " N = " << N << " K = " << K << " d = " << d << "\n";
 
-    mDataset.resize(M,std::vector<float>(N));
+    mDataset.resize(M,std::vector<double>(N));
 
     for(int i = 0 ; i < M ; ++i)
     {
@@ -30,12 +30,12 @@ int KMeans::readFromFile( const std::string& filename)
     return 0;
 }
 
-float KMeans::euclideanDistance(const std::vector<float>& v1, const std::vector<float>& v2)
+double KMeans::euclideanDistance(const std::vector<double>& v1, const std::vector<double>& v2)
 {
     if(v1.size() != v2.size())
         return -1;
 
-    float s = 0.0;
+    double s = 0.0;
 
     for (size_t i = 0; i < v1.size(); ++i)
     {
@@ -46,26 +46,75 @@ float KMeans::euclideanDistance(const std::vector<float>& v1, const std::vector<
     return s;
 }
 
-int KMeans::findClosestCentroid(const std::vector<float>& v )
+
+
+// Function to perform K-means++ initialization for centroids
+void KMeans::kMeansPlusPlusInitCentroids()
 {
-    int closestIndex = 0;
-    float  minDistance = euclideanDistance(v, mCentroids[0]);
-    for (size_t i = 1; i < mCentroids.size(); ++i)
+    // Select the first centroid
+    mCentroids.push_back(mDataset[0]);
+
+    // Select the rest of the centroids using K-means++ algorithm
+    for (int k = 1; k < K; ++k)
     {
-        float distance = euclideanDistance(v, mCentroids[i]);
-        if (distance < minDistance)
+        std::vector<double> distSquared(mDataset.size(), std::numeric_limits<double>::max());
+        double totalDistSquared = 0.0;
+        for (size_t i = 0; i < mDataset.size(); ++i)
         {
-            minDistance = distance;
-            closestIndex = i;
+            double minDist = std::numeric_limits<double>::max();
+            for (size_t j = 0; j < mCentroids.size(); ++j)
+            {
+                double dist = euclideanDistance(mDataset[i], mCentroids[j]);
+                minDist = std::min(minDist, dist);
+            }
+            distSquared[i] = minDist * minDist;
+            totalDistSquared += distSquared[i];
+        }
+
+        // Select next centroid with probability proportional to distance squared
+        std::random_device rd;
+        std::mt19937 gen(rd());
+
+        std::uniform_real_distribution<double> uniform(0, totalDistSquared);
+        double r = uniform(gen);
+        double sum = 0.0;
+        for (size_t i = 0; i < mDataset.size(); ++i)
+        {
+            sum += distSquared[i];
+            if (sum >= r)
+            {
+                mCentroids.push_back(mDataset[i]);
+                break;
+            }
         }
     }
-    return closestIndex;
 }
 
-void KMeans::updateCentroids( )
+// Function to assign each data point to the nearest centroid
+void KMeans::assignPointsToCentroids()
 {
-    std::vector<std::vector<float>> sums(mCentroids.size(), std::vector<float>(mDataset[0].size(), 0.0));
-    std::vector<int> counts(mCentroids.size(), 0);
+    for (size_t i = 0; i < mDataset.size(); ++i)
+    {
+        double minDist = std::numeric_limits<double>::max();
+        int minIdx = -1;
+        for (size_t j = 0; j < mCentroids.size(); ++j)
+        {
+            double dist = euclideanDistance(mDataset[i], mCentroids[j]);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                minIdx = j;
+            }
+        }
+        mAssignments[i] = minIdx;
+    }
+}
+
+// Function to compute new centroids based on current assignments
+std::vector<std::vector<double> > KMeans::updateCentroids()
+{
+    std::vector<std::vector<double>> sums(K, std::vector<double>(mDataset[0].size(), 0.0));
+    std::vector<int> counts(K, 0);
 
     for (size_t i = 0; i < mDataset.size(); ++i)
     {
@@ -77,53 +126,52 @@ void KMeans::updateCentroids( )
         counts[cluster]++;
     }
 
-    for (size_t i = 0; i < mCentroids.size(); ++i)
+    std::vector<std::vector<double>> newCentroids(K, std::vector<double>(mDataset[0].size(), 0.0));
+
+    for (int i = 0; i < K; ++i)
     {
-        if (counts[i] != 0)
+        for (size_t j = 0; j < mDataset[0].size(); ++j)
         {
-            for (size_t j = 0; j < mCentroids[i].size(); ++j)
+            if (counts[i] > 0)
             {
-                mCentroids[i][j] = sums[i][j] / counts[i];
+                newCentroids[i][j] = round(sums[i][j] / counts[i]);
             }
         }
     }
+
+    return newCentroids;
 }
 
 void KMeans::kMeansAlgo()
 {
     bool converged = false;
 
-    mCentroids.resize(K);
     mAssignments.resize(M, -1);
 
-    for (int i = 0; i < K; ++i)
-    {
-        mCentroids[i] = mDataset[i];
-    }
+    // Different initialization: Use K-means++ to initialize centroids
+    kMeansPlusPlusInitCentroids();
 
     while (!converged)
     {
-        for (int i = 0; i < M; ++i)
-        {
-            mAssignments[i] = findClosestCentroid(mDataset[i]);
-        }
+        // Assign data points to nearest centroids
+        assignPointsToCentroids();
 
-        std::vector<std::vector<float>> prevCentroids = mCentroids;
-        updateCentroids();
+        // Compute new centroids based on current assignments
+        std::vector<std::vector<double>> newCentroids = updateCentroids();
 
+        // Check for convergence
         double maxChange = 0.0;
-        for (size_t i = 0; i < mCentroids.size(); ++i)
+        for (int i = 0; i < K; ++i)
         {
-            float change = euclideanDistance(prevCentroids[i], mCentroids[i]);
-            if (change > maxChange)
-            {
-                maxChange = change;
-            }
+            double dist = euclideanDistance(mCentroids[i], newCentroids[i]);
+            maxChange = std::max(maxChange, dist);
         }
-        if (maxChange <= d)
-        {
+        if (maxChange <= d) {
             converged = true;
         }
+
+        // Update centroids
+        mCentroids = newCentroids;
     }
 }
 

@@ -6,7 +6,7 @@ int main()
 
     try
     {
-        KMeans k("dataset.txt");
+        KMeans k("input.txt");
 
         k.kMeansAlgo();
 
